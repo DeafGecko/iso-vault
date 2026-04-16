@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet, View, TextInput, Text, TouchableOpacity,
-  SafeAreaView, KeyboardAvoidingView, Platform, StatusBar, Alert
+  SafeAreaView, KeyboardAvoidingView, Platform, StatusBar, Alert, Keyboard, ScrollView
 } from 'react-native';
 
 const ISO_COLORS = {
@@ -16,22 +16,31 @@ export default function App() {
   const [identifier, setIdentifier] = useState('');
   const [accessKey, setAccessKey] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [secretNote, setSecretNote] = useState(''); // Your "Shelf" inside the vault
+  const [notes, setNotes] = useState([]);
+  const [currentInput, setCurrentInput] = useState('');
+
+  // --- THE LOGOUT LOGIC ---
+  const handleLogout = (message = 'Vault Secured.') => {
+    setIsLoggedIn(false);
+    setAccessKey('');
+    Alert.alert('Locked', message);
+  };
 
   // --- THE GUARD (AUTO-LOCK LOGIC) ---
   useEffect(() => {
     let guardTimer;
     if (isLoggedIn) {
-      // Start a 30-second timer whenever you are logged in
+      // 10 minutes timer
       guardTimer = setTimeout(() => {
         handleLogout('The Guard locked the vault due to inactivity.');
-      }, 120000);
+      }, 600000);
     }
-    return () => clearTimeout(guardTimer); // Clean up the timer
-  }, [isLoggedIn, secretNote]); // Reset timer if you type or log in
+    return () => {
+      if (guardTimer) clearTimeout(guardTimer);
+    };
+  }, [isLoggedIn, notes, currentInput]);
 
   const handleLogin = () => {
-    // Basic check for your 'test' credentials
     if (identifier.trim().toLowerCase() === 'test' && accessKey === 'test') {
       setIsLoggedIn(true);
     } else {
@@ -39,10 +48,12 @@ export default function App() {
     }
   };
 
-  const handleLogout = (message = 'Vault Secured.') => {
-    setIsLoggedIn(false);
-    setAccessKey(''); // Clear the key for security
-    Alert.alert('Locked', message);
+  const addNote = () => {
+    if (currentInput.trim().length > 0) {
+      setNotes([...notes, { id: Date.now().toString(), text: currentInput }]);
+      setCurrentInput('');
+      Keyboard.dismiss();
+    }
   };
 
   // --- SCREEN 2: THE DASHBOARD (INSIDE THE VAULT) ---
@@ -54,17 +65,38 @@ export default function App() {
           <Text style={styles.subtitle}>Secure Ecosystem Active</Text>
 
           <View style={styles.card}>
-            <Text style={styles.label}>Encrypted Notepad</Text>
+            <Text style={styles.label}>New Vault Entry</Text>
             <TextInput
-              style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
-              placeholder="Type a secret message..."
-              multiline
-              value={secretNote}
-              onChangeText={setSecretNote}
+              style={styles.input}
+              placeholder="Type a secret..."
+              value={currentInput}
+              onChangeText={setCurrentInput}
+              autoCorrect={false}
             />
 
             <TouchableOpacity
-              style={[styles.btn, { backgroundColor: ISO_COLORS.text }]}
+              style={[styles.btn, { marginBottom: 20 }]}
+              onPress={addNote}
+            >
+              <Text style={styles.btnText}>+ ADD TO VAULT</Text>
+            </TouchableOpacity>
+
+            <View style={{ maxHeight: 250, width: '100%', marginVertical: 10 }}>
+              <ScrollView
+                showsVerticalScrollIndicator={true}
+                indicatorStyle="black"
+                contentContainerStyle={{ paddingRight: 10 }}
+              >
+                {notes.map((note) => (
+                  <View key={note.id} style={styles.noteItem}>
+                    <Text style={styles.noteText}>• {note.text}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.btn, { backgroundColor: ISO_COLORS.text, marginTop: 10 }]}
               onPress={() => handleLogout()}
             >
               <Text style={styles.btnText}>SECURE & LOCK</Text>
@@ -123,46 +155,43 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: ISO_COLORS.bg
   },
-
   inner: {
     flex: 1,
-    justifyContent:
-      'center',
+    justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
     padding: 25
   },
-
   header: {
     alignItems: 'center',
     width: '100%',
+    marginBottom: 40
   },
-
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     color: ISO_COLORS.text,
     textAlign: 'center'
   },
-
   subtitle: {
     color: '#8D99AE',
     marginTop: 5,
     marginBottom: 20,
     textAlign: 'center'
   },
-
   card: {
     backgroundColor: ISO_COLORS.card,
     padding: 30,
     borderRadius: 20,
+    width: '100%',
     shadowColor: '#000',
+    borderWidth: 1,
+    borderColor: ISO_COLORS.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5
   },
-
   label: {
     fontSize: 12,
     fontWeight: 'bold',
@@ -170,7 +199,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textTransform: 'uppercase'
   },
-
   input: {
     borderBottomWidth: 1,
     borderBottomColor: ISO_COLORS.border,
@@ -179,17 +207,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: ISO_COLORS.text
   },
-
   btn: {
     backgroundColor: ISO_COLORS.primary,
     padding: 18,
     borderRadius: 12,
     alignItems: 'center'
   },
-
   btnText: {
     color: '#FFF',
     fontWeight: 'bold',
     letterSpacing: 1
+  },
+  noteItem: {
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: ISO_COLORS.primary,
+  },
+  noteText: {
+    color: ISO_COLORS.text,
+    fontSize: 14,
   }
-})
+});
